@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+	<meta charset="UTF-8">
+	<title>Leistungsvorhersage</title>
+	<meta name="viewport" content="initial-scale=1">
+	<meta name="theme-color" content="#006ab3">
+	<link rel="icon" type="image/png" href="../static/hhuLogo.png">
+	<link rel="stylesheet"
+		  href="../static/bootstrap.min.css"
+		  integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
+		  crossorigin="anonymous">
+	<style>
+		.custom-file-input ~ .custom-file-label::after {
+			content: "Datei auswählen";
+		}
+	</style>
+
+	<script>
+		//Wenn Vorhersage geklappt hat, nach 1 sek. weiterleiten
+		function weiterleiten() {
+			setTimeout(function() {
+				window.location = "/vorhersage";
+			}, 1000);
+		}
+
+		//Entweder (Spaltenname der Klausurpunkte und Maxpunktzahl) oder (Spaltenname der Note) werden übergeben
+		//Das jeweils andere ist dann nicht mehr required
+		function updateKlausurErgebnisse() {
+			let maxKlausurPunkte = document.getElementById("maxKlausurPunkte");
+			let klausurPunkteName = document.getElementById("klausurPunkteName");
+			let note = document.getElementById("note");
+
+			if(note.value !== "") {
+				maxKlausurPunkte.required = false;
+				klausurPunkteName.required = false;
+			} else {
+				maxKlausurPunkte.required = true;
+				klausurPunkteName.required = true;
+
+				note.required = !(maxKlausurPunkte.value !== "" && klausurPunkteName.value !== "");
+			}
+		}
+
+		//Dateiname soll im Upload-Feld angezeigt werden
+		function updateDateiname() {
+			let datei1 = document.getElementById("daten1").files;
+			let datei2 = document.getElementById("daten2").files;
+			if(datei1.length !== 0) {
+				document.getElementById("dateiLabel1").innerHTML = datei1[0].name;
+			} else {
+				document.getElementById("dateiLabel1").innerHTML = "Keine ausgewählt";
+			}
+			if(datei2.length !== 0) {
+				document.getElementById("dateiLabel2").innerHTML = datei2[0].name;
+			} else {
+				document.getElementById("dateiLabel2").innerHTML = "Keine ausgewählt";
+			}
+		}
+		
+		//Bei geänderte Eingabe des Multiplikators, wird der angezeigte Wert geändert
+		function updateMultiplikator() {
+			let multiplikator = document.getElementById("stdMultiplikator").value * 1.0;
+			document.getElementById("multiplikatorAnzeige").innerHTML = "&#xd8 - " + multiplikator + "&middot;Std";
+		}
+	</script>
+</head>
+
+<body onload="updateKlausurErgebnisse();updateMultiplikator()">
+<!-- Erfolg- und Fehlerbox -->
+{% with flash = get_flashed_messages(with_categories=true)[0] %}
+	{% if flash %}
+		<div class="container" style="text-align:center">
+			{% if flash[0] == "erfolg" %}
+				<h1 class="alert alert-success">{{ flash[1] }}</h1>
+			{% elif flash[0] == "error" %}
+				<h1 class="alert alert-danger">{{ flash[1] }}</h1>
+			{% endif %}
+		</div>
+	{% endif %}
+{% endwith %}
+
+<div class="container" style="text-align:center">
+	<h1>Vorhersage</h1>
+	<form action="/vorhersage" method="post" enctype="multipart/form-data" onsubmit="weiterleiten()"
+		  style="text-align:left" class="was-validated">
+		<div class="form-group row">
+			<label class="col-4 col-form-label">CSV-Datei:</label>
+			<div class="col-8 custom-file">
+				<input type="file" id="daten1" name="daten" accept=".csv" class="custom-file-input"
+					   oninput="updateDateiname()" required>
+				<label id="dateiLabel1" class="custom-file-label" for="daten">Keine ausgewählt</label>
+			</div>
+		</div>
+		<div class="form-group row">
+			<label class="col-4 col-form-label">Maximal erreichbare Punktzahl der Blätter:</label>
+			<input type="text" id="maxBlattPunkte" name="maxBlattPunkte" placeholder="100" {% if maxBlattPunkte %}
+				   value="{{ maxBlattPunkte }}" {% endif %} class="col-8 form-control" required>
+			<small class="col-4 text-muted">Unterschiedliche Maximalpunktzahlen mit " , " trennen</small>
+		</div>
+		<div class="form-group row">
+			<label class="col-4 col-form-label">Spaltennamen für Blätter:</label>
+			<input type="text" id="blattNamen" name="blattNamen" placeholder="summe-blatt"
+				{% if blattNamen %} value={{ blattNamen }} {% endif %} class="col-8 form-control" required>
+		</div>
+		<div class="form-group row">
+			<div class="input-group">
+				<label class="col-4 col-form-label">Auswahl für Hilfeleistungen:</label>
+				<input type="range" id="stdMultiplikator" name="stdMultiplikator" min="1" max="3" step="0.1"
+					{% if stdMultiplikator %} value={{ stdMultiplikator }} {% else %} value="2" {% endif %}
+					   class="form-control" oninput="updateMultiplikator()">
+				<span class="input-group-text"
+					  id="multiplikatorAnzeige">&#xd8 - {{ stdMultiplikator }}&middot;Std</span>
+			</div>
+		</div>
+
+		<div style="text-align:center">
+			<button type="submit" class="btn btn-outline-success">Speichern</button>
+		</div>
+	</form>
+</div>
+
+<div class="container" style="text-align:center; margin-top:100px">
+	<h1>Trainieren</h1>
+	<form action="/training" method="post" enctype="multipart/form-data" style="text-align:left" class="was-validated">
+		<div class="form-group row">
+			<label class="col-4 col-form-label">CSV-Datei:</label>
+			<div class="col-8 custom-file">
+				<input type="file" id="daten2" name="daten" accept=".csv" class="custom-file-input"
+					   onchange="updateDateiname()" required>
+				<label id="dateiLabel2" class="custom-file-label" for="daten">Keine ausgewählt</label>
+			</div>
+		</div>
+		<div class="form-group row">
+			<label class="col-4 col-form-label">Maximal erreichbare Punktzahl der Blätter:</label>
+			<input type="text" id="maxBlattPunkte" name="maxBlattPunkte" placeholder="100" {% if maxBlattPunkte %}
+				   value="{{ maxBlattPunkte }}" {% endif %} class="col-8 form-control" required>
+			<small class="col-4 text-muted">Unterschiedliche Maximalpunktzahlen mit " , " trennen</small>
+		</div>
+		<div class="form-group row">
+			<label class="col-4 col-form-label">Spaltennamen für Blätter:</label>
+			<input type="text" id="blattNamen" name="blattNamen" placeholder="summe-blatt"
+				{% if blattNamen %} value={{ blattNamen }} {% endif %} class="col-8 form-control" required>
+		</div>
+		<div class="form-group row">
+			<label class="col-4 col-form-label">Maximal erreichbare Punktzahl in der Klausur:</label>
+			<input type="number" id="maxKlausurPunkte" name="maxKlausurPunkte" min="1" step="0.5" placeholder="100"
+				{% if maxKlausurPunkte %} value={{ maxKlausurPunkte }} {% endif %} class="col-8 form-control"
+			oninput="updateKlausurErgebnisse()" required>
+		</div>
+		<div class="form-group row">
+			<label class="col-4 col-form-label">Spaltenname der Klausurpunkte:</label>
+			<input type="text" id="klausurPunkteName" name="klausurPunkteName" placeholder="summe-klausur-punkte"
+				{% if klausurPunkteName %} value={{ klausurPunkteName }} {% endif %} class="col-8 form-control"
+			oninput="updateKlausurErgebnisse()" required>
+		</div>
+		<div class="form-group row">
+			<label class="col-4 col-form-label">Spaltenname der Klausurnote:</label>
+			<input type="text" id="note" name="note" placeholder="note"
+				{% if note %} value={{ note }} {% endif %} class="col-8 form-control"
+			oninput="updateKlausurErgebnisse()" required>
+		</div>
+		<div style="text-align:center">
+			<button type="submit" class="btn btn-outline-success">Speichern</button>
+		</div>
+	</form>
+</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+version: "3.8"
+services:
+  anwendung:
+    build: .
+    ports:
+        - "8080:8080"
+    volumes:
+        - ./Server/data:/app/Server/data
